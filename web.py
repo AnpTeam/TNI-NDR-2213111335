@@ -41,14 +41,22 @@ if ticker.strip() != "":
     if not data.empty:
         st.success("✅ Successful")
 
-        styled_df = df.style.format({
-            "Date": lambda t: t.strftime("%d-%b-%Y %H:%M"),
+        #Select Some column
+        columns = st.multiselect("เลือกคอลัมน์ที่จะแสดง", df.columns.tolist(), default=["Date", "Open", "High", "Low", "Close", "Volume"])
+        select_df = df[columns]
+        
+        #Style each Column
+        styled_df = select_df.style.format({
+            "Date": lambda t: t.strftime("%d-%b-%Y"),
             "Open": "{:.2f}",
             "High": "{:.3f}",
             "Low": "{:.2f}",
             "Close": "{:.2f}",
-            "Volume": "{:,.0f}"
+            "Volume": "{:,.0f}",
+            "Dividends":"{:.2f}",
+            "Stock Splits":"{:.2f}",
         })
+
         st.dataframe(styled_df)
 
         # Get the CSV file
