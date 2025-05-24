@@ -41,25 +41,65 @@ if ticker.strip() != "":
     if not data.empty:
         st.success("✅ Successful")
 
+        # ====== Feature 3 : Can be displayed as a graph. There is a hypothetical price line that is trending the price. Therefore, every time you update a data, the graph will change continuously. ======        
+        col1,col2 = st.columns(2)
+        with col1:
+            if periods != "1 day":         
+                df_sorted = df.sort_values("Date")
+                X = df_sorted["Date"].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
+                y = df_sorted["Close"].values
+                model = LinearRegression()
+                model.fit(X, y)
+                trend = model.predict(X)
+
+                fig = plt.figure(figsize=(12, 8))
+                plt.plot(df_sorted["Date"], y, label="Actual Closing Price")
+                plt.plot(df_sorted["Date"], trend, label="Trend (Linear Regression)",
+                        linestyle="--", color="red")
+                plt.title("KTC Closing Price Trend")
+                plt.xlabel("Date")
+                plt.ylabel("Closing Price (Baht)")
+                plt.legend()
+                plt.grid(True)
+                plt.tight_layout()
+
+                #Display Plot
+                st.pyplot(fig)
+        with col2:
+            if periods in ("1 month", "3 months", "6 months" , "1 year"):
+                # รวม Volume เป็นรายเดือน (ผลรวม)
+                monthly_volume = data["Volume"].resample("M").sum()
+
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.bar(monthly_volume.index.strftime("%b %Y"), monthly_volume.values, color='red')
+                ax.set_title("Volume Monthly KTC")
+                ax.set_ylabel("Volume (Millions)")
+                ax.set_xlabel("Month")
+                plt.xticks(rotation=45)
+                st.pyplot(fig)
+        # ===========================
+
         # ====== Feature 2 : Visualize data such as top 5, mean, median etc . ======
-        st.markdown("""
-        <style>
-        .card {
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        .value {
-            font-size: 24px;
-            font-weight: lighter;
-        }
-        .label {
-            font-size: 18px;
-            color: rgb(255, 75, 75);
-            font-weight: bold;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            """
+                <style>
+                    .card {
+                        padding: 20px;
+                        border-radius: 10px;
+                        text-align: center;
+                    }
+                    .value {
+                        font-size: 24px;
+                        font-weight: lighter;
+                    }
+                    .label {
+                        font-size: 18px;
+                        color: rgb(255, 75, 75);
+                        font-weight: bold;
+                    }
+                </style>
+            """
+        , unsafe_allow_html=True)
 
         #Create column (Last Update Date , Average Open , Average Close , Last Volume , Most Volume)
         col1, col2, col3, col4, col5 = st.columns(5)
