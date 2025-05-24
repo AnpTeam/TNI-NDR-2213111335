@@ -31,7 +31,7 @@ periods = st.sidebar.selectbox(
 )
 # ===========================
 
-# ====== Feature 1 : Can view recent prices in 6 month and download them in CSV format. ======
+# ====== Code ======
 if ticker.strip() != "":
     #Download Dataframe from yfinance
     data = yf.Ticker(ticker).history(period=periods_dict[periods])
@@ -41,8 +41,88 @@ if ticker.strip() != "":
     if not data.empty:
         st.success("✅ Successful")
 
+        # ====== Feature 2 : Visualize data such as top 5, mean, median etc . ======
+        st.markdown("""
+        <style>
+        .card {
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .value {
+            font-size: 24px;
+            font-weight: lighter;
+        }
+        .label {
+            font-size: 18px;
+            color: rgb(255, 75, 75);
+            font-weight: bold;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        #Create column (Last Update Date , Average Open , Average Close , Last Volume , Most Volume)
+        col1, col2, col3, col4, col5 = st.columns(5)
+
+        with col1:
+            st.markdown(f"""<div class="card">
+                                <div class="value">
+                                    {df["Date"].max().strftime("%d-%b-%Y")}
+                                </div>
+                            <div class="label">
+                                Last Update Date
+                            </div>
+                            </div>"""
+                        , unsafe_allow_html=True)
+
+        with col2:
+            st.markdown(f"""<div class="card">
+                                <div class="value">
+                                    {df["Open"].mean():,.2f}
+                                </div>
+                            <div class="label">
+                                Average Open Price
+                            </div>
+                            </div>"""
+                        , unsafe_allow_html=True)
+
+        with col3:
+            st.markdown(f"""<div class="card">
+                                <div class="value">
+                                    {df["Close"].mean():,.2f}
+                                </div>
+                            <div class="label">
+                                Average Close Price
+                            </div>
+                            </div>"""
+                        , unsafe_allow_html=True)
+
+        with col4:
+            st.markdown(f"""<div class="card">
+                                <div class="value">
+                                    {df["Volume"].iloc[-1]:,.2f}
+                                </div>
+                            <div class="label">
+                                Last Volume
+                            </div>
+                            </div>"""
+                        , unsafe_allow_html=True)
+
+        with col5:
+            st.markdown(f"""<div class="card">
+                                <div class="value">
+                                    {df["Volume"].max():,.2f}
+                                </div>
+                            <div class="label">
+                                Max Volume
+                            </div>
+                            </div>"""
+                        , unsafe_allow_html=True)
+        # ===========================
+
+        # ====== Feature 1 : Can view recent prices in different time and download them in CSV format. ======
         #Select Some column
-        columns = st.multiselect("เลือกคอลัมน์ที่จะแสดง", df.columns.tolist(), default=["Date", "Open", "High", "Low", "Close", "Volume"])
+        columns = st.multiselect("Select Column to Display", df.columns.tolist(), default=["Date", "Open", "High", "Low", "Close", "Volume"])
         select_df = df[columns]
         
         #Style each Column
@@ -64,7 +144,7 @@ if ticker.strip() != "":
 
         # Download Button
         st.download_button(
-            label="📥 ดาวน์โหลด CSV",
+            label="📥 Download CSV",
             data=csv,
             file_name=f"{ticker}_{periods}.csv",
             mime="text/csv"
@@ -74,5 +154,7 @@ if ticker.strip() != "":
 else:
     st.info("Please Input the Stock First")
 # ===========================
+# ============ End Code===============
+
 
 
