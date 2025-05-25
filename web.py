@@ -30,6 +30,12 @@ periods = st.sidebar.selectbox(
     options=list(periods_dict.keys()),
     index=4
 )
+
+chart = st.sidebar.selectbox(
+"Chart type",
+options=list(["Candle stick","Line Chart"]),
+index=1
+)
 # ============ End Sidebar ========
 # ============== Code ================
 if ticker.strip() != "":
@@ -41,17 +47,12 @@ if ticker.strip() != "":
     if not data.empty:
         st.success("✅ Successful")
         # ========= Feature 3 : Can be displayed as a graph. There is a hypothetical price line that is trending the price. Therefore, every time you update a data, the graph will change continuously. ======        
-        col1,col2 ,col3 = st.columns(3)
-        # ===== Column 1 =================
-        with col1:
-            chart = st.sidebar.selectbox(
-            "Chart type",
-            options=list(["Candle stick","Line Chart"]),
-            index=1
-            )
+        if chart is "Line Chart" :
+            col1,col2 ,col3 = st.columns(3)
 
-            if periods != "1 day":  
-                if  chart is "Line Chart":
+                    # ===== Column 1 =================
+            with col1:
+                if periods != "1 day":  
                     df_sorted = df.sort_values("Date")
                     X = df_sorted["Date"].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
                     y = df_sorted["Close"].values
@@ -62,7 +63,7 @@ if ticker.strip() != "":
                     fig = plt.figure(figsize=(12, 8))
                     plt.plot(df_sorted["Date"], y, label="Actual Closing Price")
                     plt.plot(df_sorted["Date"], trend, label="Trend (Linear Regression)",
-                            linestyle="--", color="red")
+                                linestyle="--", color="red")
                     plt.title("KTC Closing Price Trend")
                     plt.xlabel("Date")
                     plt.ylabel("Closing Price (Baht)")
@@ -73,62 +74,111 @@ if ticker.strip() != "":
                     #plot line chart
                     st.pyplot(fig)
 
-                else :
-                    fig = go.Figure(data=[
-                        go.Candlestick(
+            # ===== End Column 1 ==============
+            # ===== Column 2 ==================
+            with col2:
+                if periods in ("1 month", "3 months", "6 months" , "1 year"):
+                    # Sum Volume
+                    monthly_volume = data["Volume"].resample("M").sum()
+
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    ax.bar(monthly_volume.index.strftime("%b %Y"), monthly_volume.values, color='red')
+                    ax.set_title("Volume Monthly KTC")
+                    ax.set_ylabel("Volume (Millions)")
+                    ax.set_xlabel("Month")
+                    plt.xticks(rotation=45)
+                    #plot bar chart
+                    st.pyplot(fig)
+            # ===== End Column 2 ==============
+            # ===== Column 3 ==================      
+            with col3 :
+                if periods != "1 day": 
+                    # Cal EMA 12 and EMA 26
+                    ema12 = df['Close'].ewm(span=12, adjust=False).mean()
+                    ema26 = df['Close'].ewm(span=26, adjust=False).mean()
+
+                    # Cal MACD line
+                    df['MACD'] = ema12 - ema26
+
+                    # คำนวณ Signal line (EMA 9 ของ MACD)
+                    df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+
+                    # plot MACD และ Signal line
+                    fig, ax = plt.subplots(figsize=(12, 8))
+                    ax.plot(df.index, df['MACD'], label='MACD', color='blue')
+                    ax.plot(df.index, df['Signal'], label='Signal', color='red')
+                    ax.set_title('MACD vs Signal Line')
+                    ax.legend()
+                    ax.grid(True)
+
+                    st.pyplot(fig)
+            # ===== End Column 3 ==============
+        else : 
+            col1 = st.columns(1)
+            # Cal MACD
+            ema12 = df['Close'].ewm(span=12, adjust=False).mean()
+            ema26 = df['Close'].ewm(span=26, adjust=False).mean()
+            macd = ema12 - ema26
+            signal = macd.ewm(span=9, adjust=False).mean()
+            hist = macd - signal
+
+            # Plotly Graph
+            fig = go.Figure()
+
+            # CandleStick
+            fig.add_trace(go.Candlestick(
                             x=df.index,
                             open=df['Open'],
                             high=df['High'],
                             low=df['Low'],
                             close=df['Close'],
+                            name='Candlestick',
                             increasing_line_color='green',
-                            decreasing_line_color='red'
+                            decreasing_line_color='red',
+                            yaxis='y1'
+                        ))
+
+            # MACD line
+            fig.add_trace(go.Scatter(
+                            x=df.index, y=macd,
+                            line=dict(color='blue'),
+                            name='MACD',
+                            yaxis='y2'
+                        ))
+
+            # Signal line
+            fig.add_trace(go.Scatter(
+                            x=df.index, y=signal,
+                            line=dict(color='orange'),
+                            name='Signal',
+                            yaxis='y2'
+                        ))
+
+            # Histogram
+            fig.add_trace(go.Bar(
+                            x=df.index, y=hist,
+                            name='Histogram',
+                            marker_color='gray',
+                            opacity=0.3,
+                            yaxis='y2'
+                        ))
+
+            # Edit layout
+            fig.update_layout(
+                            xaxis=dict(domain=[0, 1]),
+                            yaxis=dict(title='Price'),
+                            yaxis2=dict(
+                                title='MACD',
+                                overlaying='y',
+                                side='right',
+                                showgrid=False
+                            ),
+                            height=600,
+                            xaxis_rangeslider_visible=False,
+                            legend=dict(x=0, y=1.2, orientation='h')
                         )
-                    ])
 
-                    fig.update_layout(title=f'Candlestick Chart: {ticker}', xaxis_rangeslider_visible=False)
-
-                    # Plot candlestick
-                    st.plotly_chart(fig, use_container_width=True)
-        # ===== End Column 1 ==============
-        # ===== Column 2 ==================
-        with col2:
-            if periods in ("1 month", "3 months", "6 months" , "1 year"):
-                # Sum Volume
-                monthly_volume = data["Volume"].resample("M").sum()
-
-                fig, ax = plt.subplots(figsize=(10, 6))
-                ax.bar(monthly_volume.index.strftime("%b %Y"), monthly_volume.values, color='red')
-                ax.set_title("Volume Monthly KTC")
-                ax.set_ylabel("Volume (Millions)")
-                ax.set_xlabel("Month")
-                plt.xticks(rotation=45)
-                #plot bar chart
-                st.pyplot(fig)
-        # ===== End Column 2 ==============
-        # ===== Column 3 ==================      
-        with col3 :
-            if periods != "1 day": 
-                # Cal EMA 12 and EMA 26
-                ema12 = df['Close'].ewm(span=12, adjust=False).mean()
-                ema26 = df['Close'].ewm(span=26, adjust=False).mean()
-
-                # Cal MACD line
-                df['MACD'] = ema12 - ema26
-
-                # คำนวณ Signal line (EMA 9 ของ MACD)
-                df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
-
-                # plot MACD และ Signal line
-                fig, ax = plt.subplots(figsize=(12, 8))
-                ax.plot(df.index, df['MACD'], label='MACD', color='blue')
-                ax.plot(df.index, df['Signal'], label='Signal', color='red')
-                ax.set_title('MACD vs Signal Line')
-                ax.legend()
-                ax.grid(True)
-
-                st.pyplot(fig)
-        # ===== End Column 3 ==============
+            st.plotly_chart(fig, use_container_width=True)
         # ========== End Feature 3 ========================
         # ====== Feature 2 : Visualize data such as top 5, mean, median etc . ======
         #========== CSS =================
