@@ -7,12 +7,11 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 
-# ======== Web Config =======
+# ======== Web Config ========
 st.set_page_config(page_title="📈 Stock Dashboard", layout="wide")
 st.title("📊 Stock Market Dashboard")
-# ===========================
-
-# ========  Sidebar =========
+# ============================
+# ============  Sidebar ==========
 periods_dict = {
     "1 day": "1d",
     "7 days": "7d",
@@ -29,9 +28,8 @@ periods = st.sidebar.selectbox(
     options=list(periods_dict.keys()),
     index=4
 )
-# ===========================
-
-# ====== Code ======
+# ============ End Sidebar ========
+# ============== Code ================
 if ticker.strip() != "":
     #Download Dataframe from yfinance
     data = yf.Ticker(ticker).history(period=periods_dict[periods])
@@ -40,9 +38,9 @@ if ticker.strip() != "":
     #Check Error (When Data is empty)
     if not data.empty:
         st.success("✅ Successful")
-
-        # ====== Feature 3 : Can be displayed as a graph. There is a hypothetical price line that is trending the price. Therefore, every time you update a data, the graph will change continuously. ======        
-        col1,col2 = st.columns(2)
+        # ========= Feature 3 : Can be displayed as a graph. There is a hypothetical price line that is trending the price. Therefore, every time you update a data, the graph will change continuously. ======        
+        col1,col2 ,col3 = st.columns(3)
+        # ===== Column 1 =================
         with col1:
             if periods != "1 day":         
                 df_sorted = df.sort_values("Date")
@@ -63,11 +61,13 @@ if ticker.strip() != "":
                 plt.grid(True)
                 plt.tight_layout()
 
-                #Display Plot
+                #plot line chart
                 st.pyplot(fig)
+        # ===== End Column 1 ==============
+        # ===== Column 2 ==================
         with col2:
             if periods in ("1 month", "3 months", "6 months" , "1 year"):
-                # รวม Volume เป็นรายเดือน (ผลรวม)
+                # Sum Volume
                 monthly_volume = data["Volume"].resample("M").sum()
 
                 fig, ax = plt.subplots(figsize=(10, 6))
@@ -76,10 +76,35 @@ if ticker.strip() != "":
                 ax.set_ylabel("Volume (Millions)")
                 ax.set_xlabel("Month")
                 plt.xticks(rotation=45)
+                #plot bar chart
                 st.pyplot(fig)
-        # ===========================
+        # ===== End Column 2 ==============
+        # ===== Column 3 ==================      
+        with col3 :
+            if periods != "1 day": 
+                # Cal EMA 12 and EMA 26
+                ema12 = df['Close'].ewm(span=12, adjust=False).mean()
+                ema26 = df['Close'].ewm(span=26, adjust=False).mean()
 
+                # Cal MACD line
+                df['MACD'] = ema12 - ema26
+
+                # คำนวณ Signal line (EMA 9 ของ MACD)
+                df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+
+                # plot MACD และ Signal line
+                fig, ax = plt.subplots(figsize=(12, 8))
+                ax.plot(df.index, df['MACD'], label='MACD', color='blue')
+                ax.plot(df.index, df['Signal'], label='Signal', color='red')
+                ax.set_title('MACD vs Signal Line')
+                ax.legend()
+                ax.grid(True)
+
+                st.pyplot(fig)
+        # ===== End Column 3 ==============
+        # ========== End Feature 3 ========================
         # ====== Feature 2 : Visualize data such as top 5, mean, median etc . ======
+        #========== CSS =================
         st.markdown(
             """
                 <style>
@@ -100,10 +125,10 @@ if ticker.strip() != "":
                 </style>
             """
         , unsafe_allow_html=True)
-
+        # ========= End CSS =============
         #Create column (Last Update Date , Average Open , Average Close , Last Volume , Most Volume)
-        col1, col2, col3, col4, col5 = st.columns(5)
-
+        col1, col2, col3, col4 = st.columns(4)
+        # ===== Column 1 ================== 
         with col1:
             st.markdown(f"""<div class="card">
                                 <div class="value">
@@ -114,52 +139,67 @@ if ticker.strip() != "":
                             </div>
                             </div>"""
                         , unsafe_allow_html=True)
-
+        # ===== End Column 1 ==============
+        # ===== Column 2 ================== 
         with col2:
+            EMA20 = df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean().iloc[-1]
             st.markdown(f"""<div class="card">
                                 <div class="value">
-                                    {df["Open"].mean():,.2f}
+                                    {EMA20:,.2f}
                                 </div>
                             <div class="label">
-                                Average Open Price
+                                EMA 20
                             </div>
                             </div>"""
                         , unsafe_allow_html=True)
-
+        # ===== End Column 2 ==============             
+        # ===== Column 3 ==================
         with col3:
+            delta = df['Close'].diff()
+            gain = delta.clip(lower=0)
+            loss = -delta.clip(upper=0)
+
+            avg_gain = gain.rolling(window=14).mean().iloc[-1]
+            avg_loss = loss.rolling(window=14).mean().iloc[-1]
+
+            rs = avg_gain / avg_loss
+            RSI14 = 100 - (100 / (1 + rs))
+            if RSI14 < 30 : rsi_result = "Oversold"
+            elif RSI14 > 70 : rsi_result = "Overbought"
+            elif RSI14 > 30 and RSI14 < 70  : rsi_result = "Normal"
+            else : rsi_result = "Please select more data"; RSI14 = 0
             st.markdown(f"""<div class="card">
                                 <div class="value">
-                                    {df["Close"].mean():,.2f}
+                                    {RSI14:,.2f} ({rsi_result}) 
                                 </div>
                             <div class="label">
-                                Average Close Price
+                                RSI 14
                             </div>
                             </div>"""
                         , unsafe_allow_html=True)
-
+        # ===== End Column 3 ==============
+        # ===== Column 4 ================== 
         with col4:
+            ma20 = df['Close'].rolling(window=20).mean()
+            std20 = df['Close'].rolling(window=20).std()
+            upper = ma20 + 2 * std20
+            lower = ma20 - 2 * std20
+
+            
+            df['%B'] = (df['Close'] - lower) / (upper - lower)
+            last_percent_b = df['%B'].iloc[-1]
+
             st.markdown(f"""<div class="card">
                                 <div class="value">
-                                    {df["Volume"].iloc[-1]:,.2f}
+                                    {last_percent_b:.2%}
                                 </div>
                             <div class="label">
-                                Last Volume
+                                % Bollinger
                             </div>
                             </div>"""
                         , unsafe_allow_html=True)
-
-        with col5:
-            st.markdown(f"""<div class="card">
-                                <div class="value">
-                                    {df["Volume"].max():,.2f}
-                                </div>
-                            <div class="label">
-                                Max Volume
-                            </div>
-                            </div>"""
-                        , unsafe_allow_html=True)
-        # ===========================
-
+        # ===== End Column 4 ==============
+        # ====== End Feature 2 ============================ 
         # ====== Feature 1 : Can view recent prices in different time and download them in CSV format. ======
         #Select Some column
         columns = st.multiselect("Select Column to Display", df.columns.tolist(), default=["Date", "Open", "High", "Low", "Close", "Volume"])
@@ -191,10 +231,11 @@ if ticker.strip() != "":
             )
     else:
         st.error("❌ This Stock Not Found")
+    # ====== End  Feature 1 ==================================
+#Instruction Error
 else:
     st.info("Please Input the Stock First")
-# ===========================
-# ============ End Code===============
+# ============ End Code====================================
 
 
 
