@@ -7,6 +7,8 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 
+import plotly.graph_objects as go
+
 # ======== Web Config ========
 st.set_page_config(page_title="📈 Stock Dashboard", layout="wide")
 st.title("📊 Stock Market Dashboard")
@@ -42,27 +44,52 @@ if ticker.strip() != "":
         col1,col2 ,col3 = st.columns(3)
         # ===== Column 1 =================
         with col1:
-            if periods != "1 day":         
-                df_sorted = df.sort_values("Date")
-                X = df_sorted["Date"].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
-                y = df_sorted["Close"].values
-                model = LinearRegression()
-                model.fit(X, y)
-                trend = model.predict(X)
+            chart = st.sidebar.selectbox(
+            "Chart type",
+            options=list(["Candle stick","Line Chart"]),
+            index=1
+            )
 
-                fig = plt.figure(figsize=(12, 8))
-                plt.plot(df_sorted["Date"], y, label="Actual Closing Price")
-                plt.plot(df_sorted["Date"], trend, label="Trend (Linear Regression)",
-                        linestyle="--", color="red")
-                plt.title("KTC Closing Price Trend")
-                plt.xlabel("Date")
-                plt.ylabel("Closing Price (Baht)")
-                plt.legend()
-                plt.grid(True)
-                plt.tight_layout()
+            if periods != "1 day":  
+                if  chart is "Line Chart":
+                    df_sorted = df.sort_values("Date")
+                    X = df_sorted["Date"].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
+                    y = df_sorted["Close"].values
+                    model = LinearRegression()
+                    model.fit(X, y)
+                    trend = model.predict(X)
 
-                #plot line chart
-                st.pyplot(fig)
+                    fig = plt.figure(figsize=(12, 8))
+                    plt.plot(df_sorted["Date"], y, label="Actual Closing Price")
+                    plt.plot(df_sorted["Date"], trend, label="Trend (Linear Regression)",
+                            linestyle="--", color="red")
+                    plt.title("KTC Closing Price Trend")
+                    plt.xlabel("Date")
+                    plt.ylabel("Closing Price (Baht)")
+                    plt.legend()
+                    plt.grid(True)
+                    plt.tight_layout()
+
+                    #plot line chart
+                    st.pyplot(fig)
+
+                else :
+                    fig = go.Figure(data=[
+                        go.Candlestick(
+                            x=df.index,
+                            open=df['Open'],
+                            high=df['High'],
+                            low=df['Low'],
+                            close=df['Close'],
+                            increasing_line_color='green',
+                            decreasing_line_color='red'
+                        )
+                    ])
+
+                    fig.update_layout(title=f'Candlestick Chart: {ticker}', xaxis_rangeslider_visible=False)
+
+                    # Plot candlestick
+                    st.plotly_chart(fig, use_container_width=True)
         # ===== End Column 1 ==============
         # ===== Column 2 ==================
         with col2:
@@ -236,6 +263,3 @@ if ticker.strip() != "":
 else:
     st.info("Please Input the Stock First")
 # ============ End Code====================================
-
-
-
