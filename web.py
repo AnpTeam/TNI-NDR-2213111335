@@ -49,8 +49,13 @@ if ticker.strip() != "":
     #Check Error (When Data is empty)
     if not data.empty:
         st.success("✅ Successful")
+        # ============== Basic Info ===============
         st.markdown(f"**Company Name :** {info['longName']}")
         st.markdown(f"**Sector :** {info['sector']}")
+
+        st.markdown(f"**Market Cap:** {info['marketCap']:,.2f} {info['currency']}")
+        st.markdown(f"**Shares Outstanding :** {info['sharesOutstanding']:,.0f}")
+
         # ========= Feature 3 : Can be displayed as a graph. There is a hypothetical price line that is trending the price. Therefore, every time you update a data, the graph will change continuously. ======        
         if chart == "Line Chart" :
             col1,col2 ,col3 = st.columns(3)
