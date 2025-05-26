@@ -42,10 +42,15 @@ if ticker.strip() != "":
     #Download Dataframe from yfinance
     data = yf.Ticker(ticker).history(period=periods_dict[periods])
     df = data.reset_index()
+    info = yf.Ticker(ticker).info
+
+
 
     #Check Error (When Data is empty)
     if not data.empty:
         st.success("✅ Successful")
+        st.markdown(f"**Company Name :** {info['longName']}")
+        st.markdown(f"**Sector :** {info['sector']}")
         # ========= Feature 3 : Can be displayed as a graph. There is a hypothetical price line that is trending the price. Therefore, every time you update a data, the graph will change continuously. ======        
         if chart == "Line Chart" :
             col1,col2 ,col3 = st.columns(3)
